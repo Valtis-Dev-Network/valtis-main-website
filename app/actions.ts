@@ -149,18 +149,19 @@ export async function changePasswordAction(formData: FormData) {
 }
 
 export async function submitContactAction(formData: FormData) {
-  const parsed = contactSchema.parse({
+  const parsed = contactSchema.safeParse({
     name: value(formData, "name"),
     email: value(formData, "email"),
     topic: value(formData, "topic"),
     message: value(formData, "message")
   });
-  await prisma.contactMessage.create({ data: parsed });
+  if (!parsed.success) redirect("/contact?error=validation");
+  await prisma.contactMessage.create({ data: parsed.data });
   redirect("/contact?submitted=1");
 }
 
 export async function submitReportAction(formData: FormData) {
-  const parsed = reportSchema.parse({
+  const parsed = reportSchema.safeParse({
     type: value(formData, "type"),
     relatedUrl: value(formData, "relatedUrl"),
     name: value(formData, "name"),
@@ -170,17 +171,18 @@ export async function submitReportAction(formData: FormData) {
     consentToContact: formData.get("consentToContact") === "on",
     anonymous: formData.get("anonymous") === "on"
   });
+  if (!parsed.success) redirect("/report?error=validation");
   await prisma.report.create({
     data: {
-      type: parsed.type,
-      relatedUrl: parsed.relatedUrl || null,
-      name: parsed.anonymous ? null : parsed.name || null,
-      email: parsed.anonymous ? null : parsed.email || null,
-      message: parsed.message,
-      urgency: parsed.urgency,
-      consentToContact: parsed.consentToContact,
-      anonymous: parsed.anonymous,
-      safeguardingFlag: parsed.type === "SAFEGUARDING"
+      type: parsed.data.type,
+      relatedUrl: parsed.data.relatedUrl || null,
+      name: parsed.data.anonymous ? null : parsed.data.name || null,
+      email: parsed.data.anonymous ? null : parsed.data.email || null,
+      message: parsed.data.message,
+      urgency: parsed.data.urgency,
+      consentToContact: parsed.data.consentToContact,
+      anonymous: parsed.data.anonymous,
+      safeguardingFlag: parsed.data.type === "SAFEGUARDING"
     }
   });
   redirect("/report?submitted=1");
@@ -259,21 +261,22 @@ export async function addSafeguardingNoteAction(formData: FormData) {
 export async function updateLegalDocumentAction(formData: FormData) {
   const user = await getCurrentUser();
   assertCan(user?.role, "legal:manage");
-  const parsed = legalUpdateSchema.parse({
+  const parsed = legalUpdateSchema.safeParse({
     id: value(formData, "id"),
     title: value(formData, "title"),
     version: value(formData, "version"),
     content: value(formData, "content"),
     status: value(formData, "status")
   });
+  if (!parsed.success) redirect("/staff/legal?error=validation");
   const doc = await prisma.legalDocument.update({
-    where: { id: parsed.id },
+    where: { id: parsed.data.id },
     data: {
-      title: parsed.title,
-      version: parsed.version,
-      content: parsed.content,
-      status: parsed.status as LegalDocumentStatus,
-      publishedAt: parsed.status === "PUBLISHED" ? new Date() : null,
+      title: parsed.data.title,
+      version: parsed.data.version,
+      content: parsed.data.content,
+      status: parsed.data.status as LegalDocumentStatus,
+      publishedAt: parsed.data.status === "PUBLISHED" ? new Date() : null,
       updatedById: user?.id
     }
   });

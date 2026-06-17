@@ -74,6 +74,8 @@ npm run dev
 
 See `.env.example` for the required configuration.
 
+Set `NEXT_PUBLIC_SITE_URL` to the real public domain before launch. Social previews and Discord embeds use it to build the absolute URL for the high quality Valtis preview image.
+
 Never commit:
 
 * `.env`
