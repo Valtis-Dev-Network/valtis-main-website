@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String              @id @default(cuid())
+  email          String              @unique
+  name           String
+  passwordHash   String
+  role           String              @default("VIEWER")
+  disabled       Boolean             @default(false)
+  lastLoginAt    DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  auditLogs      AuditLog[]
+  legalUpdates   LegalDocument[]
+  assignedCases  SafeguardingCase[]  @relation("AssignedCases")
+  assignedReports Report[]           @relation("AssignedReports")
+}
+
+model Project {
+  id               String          @id @default(cuid())
+  name             String
+  slug             String          @unique
+  shortDescription String
+  fullDescription  String
+  category         String
+  logo             String?
+  banner           String?
+  ownerName        String
+  ownerProfileLink String?
+  websiteUrl       String?
+  githubUrl        String?
+  discordUrl       String?
+  documentationUrl String?
+  status           String          @default("CONCEPT")
+  approvalStatus   String          @default("PENDING")
+  featured         Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  tags             ProjectTag[]
+}
+
+model DeveloperProfile {
+  id                 String          @id @default(cuid())
+  displayName        String
+  slug               String          @unique
+  avatar             String?
+  bio                String
+  roleTitle          String
+  specialisations    String
+  github             String?
+  website            String?
+  discordUsername    String?
+  portfolio          String?
+  availability       String
+  badges             String          @default("[]")
+  verified           Boolean         @default(false)
+  approvalStatus     String          @default("PENDING")
+  featured           Boolean         @default(false)
+  linkedProjects     String          @default("[]")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  skills             DeveloperSkill[]
+}
+
+model Resource {
+  id          String         @id @default(cuid())
+  title       String
+  slug        String         @unique
+  excerpt     String
+  content     String
+  type        String
+  category    String
+  author      String
+  readTime    Int
+  status      String         @default("DRAFT")
+  publishedAt DateTime?
+  updatedAt   DateTime       @updatedAt
+  featured    Boolean        @default(false)
+  tags        String         @default("[]")
+}
+
+model Initiative {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  summary     String
+  description String
+  status      String             @default("PLANNED")
+  goals       String             @default("[]")
+  progress    Int                @default(0)
+  tags        String             @default("[]")
+  featured    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  members     InitiativeMember[]
+  updates     InitiativeUpdate[]
+}
+
+model InitiativeMember {
+  id           String     @id @default(cuid())
+  name         String
+  role         String
+  initiativeId String
+  initiative   Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+}
+
+model InitiativeUpdate {
+  id           String     @id @default(cuid())
+  title        String
+  body         String
+  createdAt    DateTime   @default(now())
+  initiativeId String
+  initiative   Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+}
+
+model ContactMessage {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  topic       String
+  message     String
+  read        Boolean  @default(false)
+  archived    Boolean  @default(false)
+  internalNote String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Report {
+  id                 String          @id @default(cuid())
+  type               String
+  relatedUrl         String?
+  name               String?
+  email              String?
+  message            String
+  urgency            String          @default("NORMAL")
+  consentToContact   Boolean         @default(false)
+  anonymous          Boolean         @default(false)
+  safeguardingFlag   Boolean         @default(false)
+  status             String          @default("OPEN")
+  assignedToId       String?
+  assignedTo         User?           @relation("AssignedReports", fields: [assignedToId], references: [id])
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  safeguardingCases  SafeguardingCase[]
+}
+
+model SafeguardingCase {
+  id            String              @id @default(cuid())
+  caseNumber    String              @unique
+  title         String
+  reportId      String?
+  report        Report?             @relation(fields: [reportId], references: [id])
+  status        String              @default("OPEN")
+  riskLevel     String              @default("LOW")
+  summary       String
+  actionsTaken  String              @default("")
+  assignedToId  String?
+  assignedTo    User?               @relation("AssignedCases", fields: [assignedToId], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  closedAt      DateTime?
+  notes         SafeguardingNote[]
+}
+
+model SafeguardingNote {
+  id        String            @id @default(cuid())
+  caseId    String
+  case      SafeguardingCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  body      String
+  author    String
+  createdAt DateTime          @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  entityName  String?
+  oldValues   String?
+  newValues   String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Tag {
+  id       String       @id @default(cuid())
+  name     String       @unique
+  projects ProjectTag[]
+}
+
+model ProjectTag {
+  projectId String
+  tagId     String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, tagId])
+}
+
+model DeveloperSkill {
+  id                 String            @id @default(cuid())
+  name               String
+  developerProfileId String
+  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
+}
+
+model LegalDocument {
+  id          String              @id @default(cuid())
+  type        String
+  title       String
+  slug        String              @unique
+  version     String
+  content     String
+  status      String              @default("DRAFT")
+  publishedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  updatedById String?
+  updatedBy   User?               @relation(fields: [updatedById], references: [id])
+}
+
+model CookieConsent {
+  id             String   @id @default(cuid())
+  consentId      String   @unique
+  necessary      Boolean  @default(true)
+  preferences    Boolean  @default(false)
+  analytics      Boolean  @default(false)
+  marketing      Boolean  @default(false)
+  userAgentHash  String?
+  ipHash         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
